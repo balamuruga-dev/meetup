@@ -1,36 +1,21 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import {
+  loadCreatedEvents,
+  loadJoinedEvents,
+  loadSavedEvents,
+  loadPastEvents,
+  loadMyEventsSummary,
+  cancelEvent,
+  deleteEvent,
+  type MyEvent,
+  type MyEventsSummary,
+} from "@/app/actions/my-events";
 
-type EventStatus = "upcoming" | "live" | "past" | "cancelled";
-type EventTab    = "created" | "joined" | "saved" | "past";
+type EventTab = "created" | "joined" | "saved" | "past";
 
-interface MyEvent {
-  id: string; title: string; category: string; categoryColor: string; categoryBg: string;
-  date: string; dateDisplay: string; time: string; city: string; state: string;
-  joined: number; max: number | null; type: "Free" | "Paid"; price?: number;
-  status: EventStatus; image: string; organizer: string; role: "creator" | "attendee";
-  views?: number; revenue?: number;
-}
-
-const MY_EVENTS: MyEvent[] = [
-  { id:"c1", title:"Madurai Tech Meetup — April 2025",       category:"Tech",         categoryColor:"#3C3489", categoryBg:"#EEEDFE", date:"2025-04-26", dateDisplay:"Sat 26 Apr", time:"9:00 AM",  city:"Madurai",   state:"Tamil Nadu", joined:94,   max:200,  type:"Paid", price:299, status:"upcoming", image:"💻", organizer:"Arjun Kumar",              role:"creator",   views:1240, revenue:28106 },
-  { id:"c2", title:"Madurai Street Food Carnival",            category:"Food",         categoryColor:"#712B13", categoryBg:"#FAECE7", date:"2025-04-19", dateDisplay:"Sat 19 Apr", time:"5:00 PM",  city:"Madurai",   state:"Tamil Nadu", joined:180,  max:300,  type:"Free",             status:"upcoming", image:"🍜", organizer:"Arjun Kumar",              role:"creator",   views:3240, revenue:0 },
-  { id:"c3", title:"Photography Walk — Meenakshi Temple",     category:"Photography",  categoryColor:"#085041", categoryBg:"#E1F5EE", date:"2025-04-13", dateDisplay:"Sun 13 Apr", time:"6:30 AM",  city:"Madurai",   state:"Tamil Nadu", joined:28,   max:40,   type:"Free",             status:"upcoming", image:"📷", organizer:"Arjun Kumar",              role:"creator",   views:612,  revenue:0 },
-  { id:"c4", title:"Tamil Entrepreneurs Network",             category:"Business",     categoryColor:"#0C447C", categoryBg:"#E6F1FB", date:"2025-03-15", dateDisplay:"Sat 15 Mar", time:"10:00 AM", city:"Chennai",   state:"Tamil Nadu", joined:88,   max:100,  type:"Paid", price:499, status:"past",     image:"🚀", organizer:"Arjun Kumar",              role:"creator",   views:2100, revenue:43912 },
-  { id:"c5", title:"Coimbatore Gaming Night",                 category:"Gaming",       categoryColor:"#3C3489", categoryBg:"#EEEDFE", date:"2025-03-01", dateDisplay:"Sat 1 Mar",  time:"6:00 PM",  city:"Coimbatore",state:"Tamil Nadu", joined:60,   max:60,   type:"Paid", price:199, status:"past",     image:"🎮", organizer:"Arjun Kumar",              role:"creator",   views:980,  revenue:11940 },
-  { id:"j1", title:"Kochi Biennale Opening Night",            category:"Art",          categoryColor:"#72243E", categoryBg:"#FBEAF0", date:"2025-04-11", dateDisplay:"Fri 11 Apr", time:"6:30 PM",  city:"Kochi",     state:"Kerala",     joined:890,  max:1000, type:"Free",             status:"live",     image:"🎭", organizer:"Kochi Biennale Foundation", role:"attendee" },
-  { id:"j2", title:"Chennai Music Academy Concert",           category:"Music",        categoryColor:"#633806", categoryBg:"#FAEEDA", date:"2025-04-13", dateDisplay:"Sun 13 Apr", time:"7:00 PM",  city:"Chennai",   state:"Tamil Nadu", joined:450,  max:600,  type:"Paid", price:150, status:"upcoming", image:"🎵", organizer:"Chennai Music Academy",     role:"attendee" },
-  { id:"j3", title:"Bangalore Tech Fest — AI Edition",        category:"Tech",         categoryColor:"#3C3489", categoryBg:"#EEEDFE", date:"2025-04-18", dateDisplay:"Fri 18 Apr", time:"9:30 AM",  city:"Bangalore", state:"Karnataka",  joined:540,  max:800,  type:"Paid", price:799, status:"upcoming", image:"🤖", organizer:"BangaloreTech",             role:"attendee" },
-  { id:"j4", title:"Marina Beach Sunrise Yoga",               category:"Health",       categoryColor:"#27500A", categoryBg:"#EAF3DE", date:"2025-03-22", dateDisplay:"Sat 22 Mar", time:"5:30 AM",  city:"Chennai",   state:"Tamil Nadu", joined:67,   max:100,  type:"Free",             status:"past",     image:"🧘", organizer:"Chennai Yoga Circle",       role:"attendee" },
-  { id:"j5", title:"Delhi Photography Walk",                  category:"Photography",  categoryColor:"#085041", categoryBg:"#E1F5EE", date:"2025-03-10", dateDisplay:"Sun 10 Mar", time:"7:00 AM",  city:"Delhi",     state:"Delhi",      joined:29,   max:40,   type:"Free",             status:"past",     image:"📸", organizer:"Delhi Photo Circle",        role:"attendee" },
-  { id:"s1", title:"India Gaming Expo 2025",                  category:"Gaming",       categoryColor:"#3C3489", categoryBg:"#EEEDFE", date:"2025-04-25", dateDisplay:"Fri 25 Apr", time:"11:00 AM", city:"Delhi",     state:"Delhi",      joined:1200, max:2000, type:"Paid", price:299, status:"upcoming", image:"🎮", organizer:"India Gaming Federation",   role:"attendee" },
-  { id:"s2", title:"Kerala Startup Summit 2025",              category:"Business",     categoryColor:"#0C447C", categoryBg:"#E6F1FB", date:"2025-04-22", dateDisplay:"Tue 22 Apr", time:"9:00 AM",  city:"Kochi",     state:"Kerala",     joined:145,  max:250,  type:"Paid", price:399, status:"upcoming", image:"💡", organizer:"Kerala Startup Mission",    role:"attendee" },
-  { id:"s3", title:"Nilgiri Trail Run 2025",                  category:"Sports",       categoryColor:"#085041", categoryBg:"#E1F5EE", date:"2025-04-27", dateDisplay:"Sun 27 Apr", time:"5:00 AM",  city:"Coimbatore",state:"Tamil Nadu", joined:180,  max:300,  type:"Paid", price:599, status:"upcoming", image:"🏃", organizer:"Coimbatore Runners Club",   role:"attendee" },
-  { id:"s4", title:"Hyderabad Tech & AI Meetup",              category:"Tech",         categoryColor:"#3C3489", categoryBg:"#EEEDFE", date:"2025-04-20", dateDisplay:"Sun 20 Apr", time:"10:00 AM", city:"Hyderabad", state:"Telangana",  joined:320,  max:500,  type:"Free",             status:"upcoming", image:"🤖", organizer:"HydTech Community",         role:"attendee" },
-];
-
-const STATUS_CFG: Record<EventStatus,{label:string;color:string;bg:string}> = {
+const STATUS_CFG: Record<MyEvent["status"],{label:string;color:string;bg:string}> = {
   upcoming:  {label:"Upcoming",  color:"#3C3489", bg:"#EEEDFE"},
   live:      {label:"Live now",  color:"#085041", bg:"#E1F5EE"},
   past:      {label:"Past",      color:"#444441", bg:"#F1EFE8"},
@@ -45,27 +30,97 @@ const TABS: {id:EventTab; label:string; shortLabel:string; icon:React.ReactNode}
 ];
 
 export default function MyEventsPage() {
-  const [activeTab, setActiveTab] = useState<EventTab>("created");
-  const [cancelId,  setCancelId]  = useState<string|null>(null);
+  const [activeTab,  setActiveTab]  = useState<EventTab>("created");
+  const [cancelId,   setCancelId]   = useState<string|null>(null);
+  const [deleteId,   setDeleteId]   = useState<string|null>(null);
 
-  const created = MY_EVENTS.filter(e => e.role==="creator");
-  const joined  = MY_EVENTS.filter(e => e.role==="attendee" && e.status!=="past");
-  const saved   = MY_EVENTS.filter(e => e.id.startsWith("s"));
-  const past    = MY_EVENTS.filter(e => e.status==="past");
+  // ── Per-tab event lists ─────────────────────────────────────────────────
+  const [created, setCreated] = useState<MyEvent[]>([]);
+  const [joined,  setJoined]  = useState<MyEvent[]>([]);
+  const [saved,   setSaved]   = useState<MyEvent[]>([]);
+  const [past,    setPast]    = useState<MyEvent[]>([]);
 
-  const tabEvents = useMemo(() => {
-    switch(activeTab) {
-      case "created": return created;
-      case "joined":  return joined;
-      case "saved":   return saved;
-      case "past":    return past;
-    }
+  // ── Summary stats from Firebase ────────────────────────────────────────
+  const [summary, setSummary] = useState<MyEventsSummary | null>(null);
+
+  // ── Loading / error per tab ────────────────────────────────────────────
+  const [loading,  setLoading]  = useState(true);
+  const [loadErr,  setLoadErr]  = useState("");
+
+  // ── Track which tabs have been fetched (avoid re-fetching) ─────────────
+  const [fetched, setFetched] = useState<Set<EventTab>>(new Set());
+
+  // ── Load summary stats once ─────────────────────────────────────────────
+  useEffect(() => {
+    loadMyEventsSummary().then(res => {
+      if (res.success && res.data) setSummary(res.data);
+    });
+  }, []);
+
+  // ── Load data for active tab ────────────────────────────────────────────
+  useEffect(() => {
+    if (fetched.has(activeTab)) return;          // already loaded
+    setLoading(true); setLoadErr("");
+
+    const loaders: Record<EventTab, () => Promise<any>> = {
+      created: loadCreatedEvents,
+      joined:  loadJoinedEvents,
+      saved:   loadSavedEvents,
+      past:    loadPastEvents,
+    };
+
+    loaders[activeTab]().then(res => {
+      setLoading(false);
+      if (!res.success) { setLoadErr(res.error ?? "Failed to load."); return; }
+      const data = res.data ?? [];
+      if (activeTab === "created") setCreated(data);
+      if (activeTab === "joined")  setJoined(data);
+      if (activeTab === "saved")   setSaved(data);
+      if (activeTab === "past")    setPast(data);
+      setFetched(prev => new Set(prev).add(activeTab));
+    });
   }, [activeTab]);
 
-  const totalViews    = created.reduce((s,e) => s+(e.views||0), 0);
-  const totalRevenue  = created.reduce((s,e) => s+(e.revenue||0), 0);
-  const totalAttended = created.reduce((s,e) => s+e.joined, 0);
-  const upcomingOwned = created.filter(e => e.status==="upcoming"||e.status==="live").length;
+  // ── Derived helpers ────────────────────────────────────────────────────
+  const tabEvents = activeTab==="created" ? created : activeTab==="joined" ? joined : activeTab==="saved" ? saved : past;
+
+  // Stats — use live Firebase summary when available, fall back to local counts
+  const totalViews    = summary?.totalViews   ?? created.reduce((s,e) => s+(e.views||0), 0);
+  const totalRevenue  = summary?.totalRevenue ?? created.reduce((s,e) => s+(e.revenue||0), 0);
+  const totalAttended = summary?.totalJoined  ?? created.reduce((s,e) => s+e.joined, 0);
+  const upcomingOwned = summary?.upcomingCount ?? created.filter(e => e.status==="upcoming"||e.status==="live").length;
+  const createdCount  = summary?.totalCreated ?? created.length;
+
+  // ── Cancel handler ─────────────────────────────────────────────────────
+  const handleCancel = async () => {
+    if (!cancelId) return;
+    const res = await cancelEvent(cancelId);
+    if (res.success) {
+      // Optimistic: mark as cancelled in created list
+      setCreated(prev => prev.map(e => e.id === cancelId ? { ...e, status:"cancelled" } : e));
+    }
+    setCancelId(null);
+  };
+
+  // ── Delete handler ─────────────────────────────────────────────────────
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    const res = await deleteEvent(deleteId);
+    if (res.success) {
+      setCreated(prev => prev.filter(e => e.id !== deleteId));
+      setPast(prev => prev.filter(e => e.id !== deleteId));
+    }
+    setDeleteId(null);
+  };
+
+  // Tab count badges (use loaded data length or summary)
+  const tabCount = (tab: EventTab) => {
+    if (tab === "created") return createdCount;
+    if (tab === "joined")  return joined.length;
+    if (tab === "saved")   return saved.length;
+    if (tab === "past")    return past.length;
+    return 0;
+  };
 
   return (
     <div style={{ fontFamily:"'DM Sans',sans-serif", background:"#F5F5FA", minHeight:"100vh", width:"100%" }}>
@@ -73,7 +128,7 @@ export default function MyEventsPage() {
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@700&display=swap');
         *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 
-        @keyframes fadeUp  { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes spin { to{transform:rotate(360deg)} }
         @keyframes slideIn { from{opacity:0;transform:translateX(8px)}  to{opacity:1;transform:translateX(0)} }
         @keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:.4} }
 
@@ -160,10 +215,10 @@ export default function MyEventsPage() {
         {/* Stats */}
         <div className="stats-grid" style={{ animation:"fadeUp .4s .05s ease both", opacity:0, animationFillMode:"forwards" }}>
           {[
-            { label:"Events created",  value:String(created.length),           icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7F77DD" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, bg:"#EEEDFE", change:"2 upcoming" },
-            { label:"Total attendees", value:totalAttended.toLocaleString(),   icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="1.8" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>, bg:"#E1F5EE", change:"+94 this month" },
-            { label:"Profile views",   value:totalViews.toLocaleString(),      icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#BA7517" strokeWidth="1.8" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>, bg:"#FAEEDA", change:"All events" },
-            { label:"Total revenue",   value:`₹${totalRevenue.toLocaleString()}`, icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D4537E" strokeWidth="1.8" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>, bg:"#FBEAF0", change:"Paid events" },
+            { label:"Events created",  value:String(createdCount),                icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7F77DD" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, bg:"#EEEDFE", change:`${upcomingOwned} upcoming` },
+            { label:"Total attendees", value:totalAttended.toLocaleString(),       icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="1.8" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>, bg:"#E1F5EE", change:"Across events" },
+            { label:"Profile views",   value:totalViews.toLocaleString(),          icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#BA7517" strokeWidth="1.8" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>, bg:"#FAEEDA", change:"All events" },
+            { label:"Total revenue",   value:`₹${totalRevenue.toLocaleString()}`,  icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D4537E" strokeWidth="1.8" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>, bg:"#FBEAF0", change:"Paid events" },
           ].map((s,i) => (
             <div key={s.label} className="stat-card" style={{ background:"#fff", border:"1px solid #E8E8F0", borderRadius:"13px", padding:"13px 14px", animation:`fadeUp .4s ${.07*i}s ease both`, opacity:0, animationFillMode:"forwards" }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"9px" }}>
@@ -179,7 +234,7 @@ export default function MyEventsPage() {
         {/* Tabs */}
         <div className="tabs-bar scrollx" style={{ animation:"fadeUp .4s .1s ease both", opacity:0, animationFillMode:"forwards" }}>
           {TABS.map(tab => {
-            const count = tab.id==="created"?created.length:tab.id==="joined"?joined.length:tab.id==="saved"?saved.length:past.length;
+            const count = tabCount(tab.id);
             const isA = activeTab===tab.id;
             return (
               <button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{ display:"flex", alignItems:"center", gap:"6px", padding:"8px 13px", background:isA?"#1A1A2E":"#fff", border:`1px solid ${isA?"#1A1A2E":"#E8E8F0"}`, borderRadius:"10px", fontSize:"13px", fontWeight:isA?500:400, color:isA?"#fff":"#888780", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", flexShrink:0, whiteSpace:"nowrap", WebkitTapHighlightColor:"transparent" }}>
@@ -193,8 +248,17 @@ export default function MyEventsPage() {
 
         {/* Summary row */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"13px", flexWrap:"wrap", gap:"7px" }}>
-          <p style={{ fontSize:"13px", color:"#888780" }}><strong style={{ color:"#1A1A2E" }}>{tabEvents.length}</strong> event{tabEvents.length!==1?"s":""}</p>
-          {activeTab==="created" && (
+          {loading ? (
+            <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
+              <span style={{ width:"14px",height:"14px",border:"2px solid #EEEDFE",borderTopColor:"#7F77DD",borderRadius:"50%",display:"inline-block",animation:"spin .7s linear infinite" }}/>
+              <span style={{ fontSize:"13px", color:"#888780" }}>Loading…</span>
+            </div>
+          ) : loadErr ? (
+            <span style={{ fontSize:"13px", color:"#E24B4A" }}>⚠️ {loadErr}</span>
+          ) : (
+            <p style={{ fontSize:"13px", color:"#888780" }}><strong style={{ color:"#1A1A2E" }}>{tabEvents.length}</strong> event{tabEvents.length!==1?"s":""}</p>
+          )}
+          {activeTab==="created" && !loading && (
             <div style={{ display:"flex", gap:"7px" }}>
               <span style={{ fontSize:"11px", padding:"3px 9px", borderRadius:"20px", background:"#E1F5EE", color:"#085041", fontWeight:500 }}>{upcomingOwned} upcoming</span>
               <span style={{ fontSize:"11px", padding:"3px 9px", borderRadius:"20px", background:"#F1EFE8", color:"#444441", fontWeight:500 }}>{created.filter(e=>e.status==="past").length} past</span>
@@ -203,11 +267,11 @@ export default function MyEventsPage() {
         </div>
 
         {/* Cards */}
-        {tabEvents.length===0 ? <EmptyState tab={activeTab}/> : (
-          <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
+        {!loading && !loadErr && tabEvents.length===0 ? <EmptyState tab={activeTab}/> : (
+          !loading && <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
             {tabEvents.map((ev,i) =>
               activeTab==="created"
-                ? <CreatedCard  key={ev.id} event={ev} delay={i*.04} onCancel={()=>setCancelId(ev.id)}/>
+                ? <CreatedCard key={ev.id} event={ev} delay={i*.04} onCancel={()=>setCancelId(ev.id)} onDelete={()=>setDeleteId(ev.id)}/>
                 : <AttendeeCard key={ev.id} event={ev} delay={i*.04} tab={activeTab}/>
             )}
           </div>
@@ -225,7 +289,24 @@ export default function MyEventsPage() {
             <p style={{ fontSize:"13px", color:"#888780", lineHeight:1.6, marginBottom:"20px" }}>All participants will be notified. This cannot be undone.</p>
             <div style={{ display:"flex", gap:"10px" }}>
               <button onClick={()=>setCancelId(null)} style={{ flex:1, padding:"11px", background:"transparent", border:"1.5px solid #E8E8F0", borderRadius:"9px", fontSize:"13px", fontWeight:500, color:"#888780", cursor:"pointer", fontFamily:"'DM Sans',sans-serif" }}>Keep event</button>
-              <button onClick={()=>setCancelId(null)} style={{ flex:1, padding:"11px", background:"#E24B4A", border:"none", borderRadius:"9px", fontSize:"13px", fontWeight:600, color:"#fff", cursor:"pointer", fontFamily:"'DM Sans',sans-serif" }}>Yes, cancel it</button>
+              <button onClick={handleCancel} style={{ flex:1, padding:"11px", background:"#E24B4A", border:"none", borderRadius:"9px", fontSize:"13px", fontWeight:600, color:"#fff", cursor:"pointer", fontFamily:"'DM Sans',sans-serif" }}>Yes, cancel it</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Modal */}
+      {deleteId && (
+        <div className="modal-overlay" onClick={()=>setDeleteId(null)}>
+          <div className="modal-box" onClick={e=>e.stopPropagation()}>
+            <div style={{ width:"46px",height:"46px",borderRadius:"12px",background:"#FCEBEB",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:"14px" }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" strokeWidth="1.8" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+            </div>
+            <h3 style={{ fontSize:"17px",fontWeight:600,color:"#1A1A2E",marginBottom:"8px" }}>Delete this event?</h3>
+            <p style={{ fontSize:"13px",color:"#888780",lineHeight:1.6,marginBottom:"20px" }}>This permanently deletes the event and removes all participants. This action <strong>cannot be undone</strong>.</p>
+            <div style={{ display:"flex",gap:"10px" }}>
+              <button onClick={()=>setDeleteId(null)} style={{ flex:1,padding:"11px",background:"transparent",border:"1.5px solid #E8E8F0",borderRadius:"9px",fontSize:"13px",fontWeight:500,color:"#888780",cursor:"pointer",fontFamily:"'DM Sans',sans-serif" }}>Keep event</button>
+              <button onClick={handleDelete} style={{ flex:1,padding:"11px",background:"#E24B4A",border:"none",borderRadius:"9px",fontSize:"13px",fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"'DM Sans',sans-serif" }}>Delete forever</button>
             </div>
           </div>
         </div>
@@ -234,7 +315,7 @@ export default function MyEventsPage() {
   );
 }
 
-function CreatedCard({event:e, delay, onCancel}:{event:MyEvent;delay:number;onCancel:()=>void}) {
+function CreatedCard({event:e, delay, onCancel, onDelete}:{event:MyEvent;delay:number;onCancel:()=>void;onDelete:()=>void}) {
   const pct = e.max ? Math.round((e.joined/e.max)*100) : 0;
   const bar = pct>=90?"#E24B4A":pct>=70?"#BA7517":"#1D9E75";
   const full = e.max!==null && e.joined>=e.max;
@@ -300,9 +381,13 @@ function CreatedCard({event:e, delay, onCancel}:{event:MyEvent;delay:number;onCa
             <Link href={`/events/${e.id}/edit`}     className="action-btn" style={{ display:"block",padding:"7px 13px",background:"#F5F5FA",border:"1px solid #E8E8F0",borderRadius:"8px",fontSize:"12px",fontWeight:500,color:"#444441",textDecoration:"none",whiteSpace:"nowrap" }}>Edit</Link>
             <button onClick={onCancel}               className="action-btn" style={{ padding:"7px 13px",background:"transparent",border:"1px solid #F7C1C1",borderRadius:"8px",fontSize:"12px",fontWeight:500,color:"#E24B4A",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",whiteSpace:"nowrap" }}>Cancel</button>
           </>)}
+          {e.status==="cancelled" && (
+            <button onClick={onDelete} className="action-btn" style={{ padding:"7px 13px",background:"#FCEBEB",border:"1px solid #F09595",borderRadius:"8px",fontSize:"12px",fontWeight:500,color:"#A32D2D",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",whiteSpace:"nowrap" }}>Delete</button>
+          )}
           {e.status==="past" && (<>
             <Link href={`/events/${e.id}`}           className="action-btn" style={{ display:"block",padding:"7px 13px",background:"#F5F5FA",border:"1px solid #E8E8F0",borderRadius:"8px",fontSize:"12px",fontWeight:500,color:"#444441",textDecoration:"none",whiteSpace:"nowrap" }}>Recap</Link>
             <Link href={`/events/${e.id}/duplicate`} className="action-btn" style={{ display:"block",padding:"7px 13px",background:"#EEEDFE",border:"1px solid rgba(127,119,221,.3)",borderRadius:"8px",fontSize:"12px",fontWeight:500,color:"#3C3489",textDecoration:"none",whiteSpace:"nowrap" }}>Duplicate</Link>
+            <button onClick={onDelete} className="action-btn" style={{ padding:"7px 13px",background:"#FCEBEB",border:"1px solid #F09595",borderRadius:"8px",fontSize:"12px",fontWeight:500,color:"#A32D2D",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",whiteSpace:"nowrap" }}>Delete</button>
           </>)}
         </div>
       </div>
